@@ -130,7 +130,15 @@ inline void Copy(Tensor<cpu, dim, DType> _dst,
   CHECK_EQ(_dst.shape_, _src.shape_)
       << "Copy:shape mismatch:" << _dst.shape_ << " vs " << _src.shape_;
   if (_dst.CheckContiguous() && _src.CheckContiguous()) {
+#if MSHADOW_USE_MKL
+    const int size = _dst.shape_.Size();
+    #pragma omp parallel for if(size>5000)
+    for(int i=0; i<size; i++) {
+      _dst.dptr_[i] = _src.dptr_[i];
+    }
+#else
     memcpy(_dst.dptr_, _src.dptr_, sizeof(DType) * _dst.shape_.Size());
+#endif
   } else {
     Tensor<cpu, 2, DType> dst = _dst.FlatTo2D();
     Tensor<cpu, 2, DType> src = _src.FlatTo2D();
